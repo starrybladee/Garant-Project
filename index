@@ -6,85 +6,356 @@
   <title>Гарант сделок Telegram Gifts</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; margin: 15px; background: var(--tg-theme-bg-color,#fff); color: var(--tg-theme-text-color,#000); }
-    button { padding: 10px; margin-top:10px; width:100%; background: var(--tg-theme-button-color,#24a0ed); color: var(--tg-theme-button-text-color,#fff); border:none; border-radius:5px; }
-    input, textarea { width:100%; padding:8px; margin-top:5px; border:1px solid #ccc; border-radius:4px; }
-    .deal{ border:1px solid #ccc; padding:10px; margin-top:10px; border-radius:4px; }
+    body {
+      font-family: Arial, sans-serif;
+      margin: 15px;
+      background: var(--tg-theme-bg-color, #fff);
+      color: var(--tg-theme-text-color, #000);
+    }
+    button {
+      padding: 10px;
+      margin-top: 10px;
+      width: 100%;
+      background: var(--tg-theme-button-color, #24a0ed);
+      color: var(--tg-theme-button-text-color, #fff);
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    button:disabled {
+      background: var(--tg-theme-secondary-bg-color, #ccc);
+      cursor: not-allowed;
+    }
+    input, textarea, select {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    .deal {
+      border: 1px solid #ccc;
+      padding: 10px;
+      margin-top: 10px;
+      border-radius: 4px;
+      background: var(--tg-theme-secondary-bg-color, #f9f9f9);
+    }
+    .deal-info {
+      margin-bottom: 10px;
+    }
+    .status-pending { color: orange; }
+    .status-paid { color: green; }
+    .status-completed { color: blue; }
+    .status-cancelled { color: red; }
+    .user-info {
+      font-size: 0.9em;
+      color: var(--tg-theme-hint-color, #666);
+      margin-top: 5px;
+    }
+    .error { color: red; font-size: 0.9em; }
+    .hidden { display: none; }
   </style>
 </head>
 <body>
 <script>
   Telegram.WebApp.ready();
+  Telegram.WebApp.expand();
+  
   Telegram.WebApp.onEvent('themeChanged', () => {
     document.body.style.background = Telegram.WebApp.backgroundColor;
   });
 </script>
 
-<h2>Создать сделку</h2>
-<input id="gift" placeholder="Описание подарка">
-<input id="price" placeholder="Цена (USDT)">
-<textarea id="details" placeholder="Условия сделки"></textarea>
-<button onclick="createDeal()">Создать</button>
+<div id="main-app">
+  <h2>Создать сделку</h2>
+  <div id="error-message" class="error hidden"></div>
+  <input id="gift" placeholder="Описание подарка" required>
+  <input id="price" placeholder="Цена (USDT)" type="number" min="1" step="0.01" required>
+  <select id="currency">
+    <option value="USDT">USDT</option>
+    <option value="RUB">RUB</option>
+    <option value="USD">USD</option>
+  </select>
+  <textarea id="details" placeholder="Условия сделки" rows="3"></textarea>
+  <button id="create-deal-btn" onclick="createDeal()">Создать сделку</button>
 
-<h2>Список сделок</h2>
-<div id="deals"></div>
+  <h2>Активные сделки</h2>
+  <div id="deals-loading">Загрузка сделок...</div>
+  <div id="deals"></div>
+  <div id="no-deals" class="hidden">Нет активных сделок</div>
+</div>
+
+<div id="deal-details" class="hidden">
+  <h2>Детали сделки</h2>
+  <div id="deal-content"></div>
+  <button id="back-btn" onclick="showDealsList()">Назад к списку</button>
+</div>
 
 <script>
 // Хранение сделок
-const deals = [];
+let deals = [];
+const user = Telegram.WebApp.initDataUnsafe.user || { id: 0, username: 'Гость', first_name: 'Гость' };
 
-// Получаем данные пользователя
-const user = Telegram.WebApp.initDataUnsafe.user;
+// DOM элементы
+const giftEl = document.getElementById('gift');
+const priceEl = document.getElementById('price');
+const currencyEl = document.getElementById('currency');
+const detailsEl = document.getElementById('details');
+const dealsEl = document.getElementById('deals');
+const dealsLoadingEl = document.getElementById('deals-loading');
+const noDealsEl = document.getElementById('no-deals');
+const errorEl = document.getElementById('error-message');
+const mainAppEl = document.getElementById('main-app');
+const dealDetailsEl = document.getElementById('deal-details');
+const dealContentEl = document.getElementById('deal-content');
+const createDealBtn = document.getElementById('create-deal-btn');
 
-function createDeal(){
-  const gift = giftEl.value.trim();
-  const price = priceEl.value.trim();
-  if(!gift||!price) return alert('Заполните поля');
-  deals.push({id:deals.length+1, gift, price, details:detailsEl.value, status:'Ожидание оплаты', owner:user.id});
-  renderDeals();
+// Инициализация
+document.addEventListener('DOMContentLoaded', () => {
+  // Загрузка сделок с "сервера"
+  setTimeout(() => {
+    loadDeals();
+  }, 500);
+});
+
+function showError(message) {
+  errorEl.textContent = message;
+  errorEl.classList.remove('hidden');
+  setTimeout(() => errorEl.classList.add('hidden'), 3000);
 }
 
-function renderDeals(){
+async function loadDeals() {
+  try {
+    // Здесь должна быть загрузка с сервера
+    // Для демо используем локальные данные
+    dealsLoadingEl.textContent = '';
+    renderDeals();
+  } catch (error) {
+showError('Ошибка загрузки сделок');
+    console.error(error);
+  }
+}
+
+function createDeal() {
+  const gift = giftEl.value.trim();
+  const price = priceEl.value.trim();
+  const currency = currencyEl.value;
+  const details = detailsEl.value.trim();
+  
+  if (!gift || !price) {
+    showError('Заполните обязательные поля');
+    return;
+  }
+  
+  if (isNaN(price) || parseFloat(price) <= 0) {
+    showError('Укажите корректную цену');
+    return;
+  }
+  
+  createDealBtn.disabled = true;
+  
+  // Имитация отправки на сервер
+  setTimeout(() => {
+    const newDeal = {
+      id: Date.now(),
+      gift,
+      price: parseFloat(price).toFixed(2),
+      currency,
+      details,
+      status: 'Ожидание оплаты',
+      owner: user.id,
+      ownerName: user.first_name || 'Аноним',
+      createdAt: new Date().toLocaleString(),
+      buyer: null
+    };
+    
+    deals.unshift(newDeal);
+    renderDeals();
+    
+    // Очистка формы
+    giftEl.value = '';
+    priceEl.value = '';
+    detailsEl.value = '';
+    createDealBtn.disabled = false;
+    
+    Telegram.WebApp.showAlert('Сделка создана!');
+  }, 500);
+}
+
+function renderDeals() {
+  if (deals.length === 0) {
+    noDealsEl.classList.remove('hidden');
+    dealsEl.classList.add('hidden');
+    return;
+  }
+  
+  noDealsEl.classList.add('hidden');
+  dealsEl.classList.remove('hidden');
   dealsEl.innerHTML = '';
-  deals.forEach(d=>{
-    const div = document.createElement('div'); div.className='deal';
+  
+  deals.forEach(deal => {
+    const div = document.createElement('div');
+    div.className = 'deal';
     div.innerHTML = `
-      <b>Подарок:</b> ${d.gift}<br>
-      <b>Цена:</b> ${d.price} USDT<br>
-      <b>Статус:</b> ${d.status}<br>`;
-    if(d.status==='Ожидание оплаты' && d.owner!==user.id){
-      const btn = document.createElement('button');
-      btn.textContent='Принять и оплатить';
-      btn.onclick=()=>acceptDeal(d.id);
-      div.append(btn);
+      <div class="deal-info">
+        <b>Подарок:</b> ${deal.gift}<br>
+        <b>Цена:</b> ${deal.price} ${deal.currency}<br>
+        <b>Статус:</b> <span class="status-${getStatusClass(deal.status)}">${deal.status}</span><br>
+        <div class="user-info">Создал: ${deal.ownerName}</div>
+      </div>
+    `;
+    
+    const btn = document.createElement('button');
+    
+    if (deal.status === 'Ожидание оплаты') {
+      if (deal.owner !== user.id) {
+        btn.textContent = 'Принять сделку';
+        btn.onclick = () => showDealDetails(deal.id);
+      } else {
+        btn.textContent = 'Отменить сделку';
+        btn.onclick = () => cancelDeal(deal.id);
+        btn.style.backgroundColor = 'var(--tg-theme-destructive-color, #ff3b30)';
+      }
+    } else if (deal.status === 'Оплачено') {
+      if (deal.owner === user.id) {
+        btn.textContent = 'Подтвердить отправку';
+        btn.onclick = () => markSent(deal.id);
+      } else if (deal.buyer === user.id) {
+        btn.textContent = 'Ожидание отправки...';
+        btn.disabled = true;
+      }
+    } else if (deal.status === 'Отправлено') {
+      if (deal.buyer === user.id) {
+        btn.textContent = 'Подтвердить получение';
+        btn.onclick = () => completeDeal(deal.id);
+      } else {
+        btn.textContent = 'Ожидание подтверждения...';
+        btn.disabled = true;
+      }
     }
-    if(d.status==='Оплачено' && d.owner===user.id){
-      const btn = document.createElement('button');
-      btn.textContent='Подарок отправлен';
-      btn.onclick=()=>markSent(d.id);
-      div.append(btn);
-    }
-    dealsEl.append(div);
+    
+    div.appendChild(btn);
+    dealsEl.appendChild(div);
   });
 }
 
-function acceptDeal(id){
-  const d = deals.find(x=>x.id===id);
-  if(d){ d.status='Оплачено'; renderDeals(); Telegram.WebApp.showAlert('Покупатель оплатил — свяжитесь с продавцом'); }
+function getStatusClass(status) {
+  const statusMap = {
+    'Ожидание оплаты': 'pending',
+    'Оплачено': 'paid',
+    'Отправлено': 'paid',
+    'Завершено': 'completed',
+    'Отменено': 'cancelled'
+  };
+  return statusMap[status] || 'pending';
 }
 
-function markSent(id){
-  const d = deals.find(x=>x.id===id);
-  if(d){ d.status='Завершено'; renderDeals(); Telegram.WebApp.showAlert('Сделка завершена.'); }
+function showDealDetails(dealId) {
+  const deal = deals.find(d => d.id === dealId);
+  if (!deal) return;
+  
+  dealContentEl.innerHTML = `
+    <div class="deal-info">
+      <h3>${deal.gift}</h3>
+      <p><b>Цена:</b> ${deal.price} ${deal.currency}</p>
+      <p><b>Статус:</b> <span class="status-${getStatusClass(deal.status)}">${deal.status}</span></p>
+      <p><b>Создал:</b> ${deal.ownerName}</p>
+      ${deal.details ? <p><b>Детали:</b><br>${deal.details}</p> : ''}
+      <p><small>Создано: ${deal.createdAt}</small></p>
+    </div>
+  `;
+  
+  const actionBtn = document.createElement('button');
+  
+  if (deal.status === 'Ожидание оплаты') {
+    actionBtn.textContent = 'Оплатить сделку';
+    actionBtn.onclick = () => acceptDeal(deal.id);
+  } else if (deal.status === 'Оплачено' && deal.buyer === user.id) {
+    actionBtn.textContent = 'Ожидание отправки...';
+    actionBtn.disabled = true;
+  }
+  
+  dealContentEl.appendChild(actionBtn);
+mainAppEl.classList.add('hidden');
+  dealDetailsEl.classList.remove('hidden');
 }
 
-// Связываем DOM
-const giftEl = document.getElementById('gift');
-const priceEl = document.getElementById('price');
-const detailsEl = document.getElementById('details');
-const dealsEl = document.getElementById('deals');
+function showDealsList() {
+  mainAppEl.classList.remove('hidden');
+  dealDetailsEl.classList.add('hidden');
+}
 
-renderDeals();
+function acceptDeal(dealId) {
+  Telegram.WebApp.showConfirm(
+    Вы уверены, что хотите оплатить эту сделку?,
+    (confirmed) => {
+      if (confirmed) {
+        const deal = deals.find(d => d.id === dealId);
+        if (deal) {
+          deal.status = 'Оплачено';
+          deal.buyer = user.id;
+          deal.buyerName = user.first_name || 'Покупатель';
+          deal.paidAt = new Date().toLocaleString();
+          renderDeals();
+          showDealsList();
+          Telegram.WebApp.showAlert('Сделка оплачена! Свяжитесь с продавцом для уточнения деталей отправки.');
+        }
+      }
+    }
+  );
+}
+
+function markSent(dealId) {
+  Telegram.WebApp.showConfirm(
+    'Вы отправили подарок покупателю?',
+    (confirmed) => {
+      if (confirmed) {
+        const deal = deals.find(d => d.id === dealId);
+        if (deal) {
+          deal.status = 'Отправлено';
+          deal.sentAt = new Date().toLocaleString();
+          renderDeals();
+          Telegram.WebApp.showAlert('Покупатель уведомлен о отправке. Ожидайте подтверждения получения.');
+        }
+      }
+    }
+  );
+}
+
+function completeDeal(dealId) {
+  Telegram.WebApp.showConfirm(
+    'Вы получили подарок и довольны сделкой?',
+    (confirmed) => {
+      if (confirmed) {
+        const deal = deals.find(d => d.id === dealId);
+        if (deal) {
+          deal.status = 'Завершено';
+          deal.completedAt = new Date().toLocaleString();
+          renderDeals();
+          Telegram.WebApp.showAlert('Сделка успешно завершена! Спасибо за использование нашего сервиса.');
+        }
+      }
+    }
+  );
+}
+
+function cancelDeal(dealId) {
+  Telegram.WebApp.showConfirm(
+    'Вы действительно хотите отменить сделку?',
+    (confirmed) => {
+      if (confirmed) {
+        const deal = deals.find(d => d.id === dealId);
+        if (deal) {
+          deal.status = 'Отменено';
+          deal.cancelledAt = new Date().toLocaleString();
+          renderDeals();
+          Telegram.WebApp.showAlert('Сделка отменена.');
+        }
+      }
+    }
+  );
+}
 </script>
 </body>
 </html>
