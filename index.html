@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Garant Bot | P2P NFT Marketplace</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root {
+            --primary: #6C38FF;
+            --primary-dark: #5B2EE0;
+            --bg-color: #f8f9fa;
+            --card-bg: #ffffff;
+            --text-color: #2D3436;
+            --text-secondary: #636E72;
+            --border-radius: 16px;
+            --box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+        
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            padding-bottom: 80px;
+        }
+        
+        .container {
+            padding: 16px;
+            max-width: 100%;
+        }
+        
+        /* Навигация */
+        .nav-tabs {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            background: var(--card-bg);
+            box-shadow: 0 -2px 20px rgba(0, 0, 0, 0.08);
+            z-index: 100;
+            padding: 8px 0;
+        }
+        
+        .tab-button {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 8px 0;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        
+        .tab-button.active {
+            color: var(--primary);
+        }
+        
+        .tab-icon {
+            font-size: 22px;
+            margin-bottom: 4px;
+        }
+        
+        .tab-button.active .tab-icon {
+            transform: translateY(-2px);
+        }
+        
+        /* Карточки */
+        .card {
+            background: var(--card-bg);
+            border-radius: var(--border-radius);
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: var(--box-shadow);
+        }
+        
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-color);
+        }
+        
+        .card-more {
+            color: var(--primary);
+            font-size: 14px;
+            font-weight: 500;
+            text-decoration: none;
+        }
+        
+        /* Контент вкладок */
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        /* Главная страница */
+        .nft-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+        
+        .nft-item {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+        
+        .nft-image {
+            width: 100%;
+            height: 120px;
+            background: #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+        }
+        
+        .nft-info {
+            padding: 12px;
+        }
+        
+        .nft-name {
+            font-weight: 600;
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .nft-price {
+            color: var(--primary);
+            font-weight: 700;
+        }
+        
+        /* Личный кабинет */
+        .profile-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+            font-weight: 600;
+            margin-right: 16px;
+        }
+        
+        .user-info h2 {
+            font-size: 18px;
+            margin-bottom: 4px;
+        }
+        
+        .user-info p {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin: 20px 0;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #f6f6f6, #f0f0f0);
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 4px;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        
+        /* Кнопки */
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 14px;
+            border-radius: 12px;
+            border: none;
+            background: var(--primary);
+            color: white;
+            font-weight: 600;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .btn:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+        }
+        
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--primary);
+            color: var(--primary);
+        }
+        
+        /* Анимации */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Модальные окна */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            animation: fadeIn 0.3s;
+        }
+        
+        .modal-content {
+            background: white;
+            width: 90%;
+            max-width: 400px;
+            border-radius: var(--border-radius);
+            padding: 24px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+        }
+        
+        .input-field {
+            width: 100%;
+            padding: 14px;
+            border: 1px solid #e0e0e0;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            font-size: 15px;
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Главная -->
+        <div id="home-tab" class="tab-content active">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Популярные NFT</h2>
+                    <a href="#" class="card-more">Все</a>
+                </div>
+                <div class="nft-grid">
+                    <div class="nft-item">
+                        <div class="nft-image">
+                            <i class="fas fa-gift fa-2x"></i>
+                        </div>
+                        <div class="nft-info">
+                            <div class="nft-name">Golden Gift</div>
+                            <div class="nft-price">12 TON</div>
+                        </div>
+                    </div>
+                    <div class="nft-item">
+                        <div class="nft-image">
+                            <i class="fas fa-gem fa-2x"></i>
+                        </div>
+                        <div class="nft-info">
+                            <div class="nft-name">Diamond Box</div>
+                            <div class="nft-price">25 TON</div>
+                        </div>
+                    </div>
+                    <div class="nft-item">
+                        <div class="nft-image">
+                            <i class="fas fa-star fa-2x"></i>
+                        </div>
+                        <div class="nft-info">
+                            <div class="nft-name">Premium Star</div>
+                            <div class="nft-price">18 TON</div>
+                        </div>
+                    </div>
+                    <div class="nft-item">
+                        <div class="nft-image">
+                            <i class="fas fa-meteor fa-2x"></i>
+                        </div>
+                        <div class="nft-info">
+                            <div class="nft-name">Meteor Pack</div>
+                            <div class="nft-price">30 TON</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Последние сделки</h2>
+                </div>
+                <p style="color: var(--text-secondary); text-align: center; padding: 20px 0;">
+                    Здесь будет история последних сделок
+                </p>
+            </div>
+        </div>
+        
+        <!-- Предложения -->
+        <div id="offers-tab" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Мои предложения</h2>
+                    <button class="btn" style="width: auto; padding: 8px 16px;">+ Новое</button>
+                </div>
+                
+                <div style="text-align: center; padding: 30px 0;">
+                    <i class="fas fa-folder-open" style="font-size: 48px; color: #e0e0e0; margin-bottom: 16px;"></i>
+                    <p style="color: var(--text-secondary);">У вас пока нет активных предложений</p>
+                    <button class="btn" style="margin-top: 16px;">Создать предложение</button>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Доступные предложения</h2>
+                    <a href="#" class="card-more">Все</a>
+                </div>
+                
+                <div style="text-align: center; padding: 20px 0;">
+                    <i class="fas fa-spinner fa-spin" style="font-size: 24px; color: var(--primary);"></i>
+                    <p style="color: var(--text-secondary); margin-top: 8px;">Загрузка предложений...</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- История -->
+        <div id="history-tab" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">История сделок</h2>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn-outline" style="width: auto; padding: 6px 12px; font-size: 12px;">Покупки</button>
+                        <button class="btn" style="width: auto; padding: 6px 12px; font-size: 12px;">Продажи</button>
+                    </div>
+                </div>
+                
+                <div style="text-align: center; padding: 40px 0;">
+                    <i class="fas fa-clock" style="font-size: 48px; color: #e0e0e0; margin-bottom: 16px;"></i>
+                    <p style="color: var(--text-secondary);">Здесь будет ваша история сделок</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Личный кабинет -->
+        <div id="profile-tab" class="tab-content">
+            <div class="card">
+                <div class="profile-header">
+                    <div class="avatar">U</div>
+                    <div class="user-info">
+                        <h2>Username</h2>
+                        <p>Рейтинг: ★★★★★ (4.9)</p>
+                    </div>
+                </div>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value">24</div>
+                        <div class="stat-label">Сделки</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">15</div>
+                        <div class="stat-label">Продано</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">9</div>
+                        <div class="stat-label">Куплено</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">98%</div>
+                        <div class="stat-label">Успешных</div>
+                    </div>
+                </div>
+                
+                <button class="btn" style="margin-bottom: 12px;">
+                    <i class="fas fa-wallet" style="margin-right: 8px;"></i>
+                    Привязать TON кошелек
+                </button>
+                <button class="btn-outline">
+                    <i class="fas fa-cog" style="margin-right: 8px;"></i>
+                    Настройки профиля
+                </button>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Поддержка</h2>
+                </div>
+                <button class="btn-outline" style="margin-bottom: 8px;">
+                    <i class="fas fa-question-circle" style="margin-right: 8px;"></i>
+                    Помощь
+                </button>
+                <button class="btn-outline">
+                    <i class="fas fa-headset" style="margin-right: 8px;"></i>
+                    Связаться с поддержкой
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Модальное окно для кошелька -->
+    <div id="wallet-modal" class="modal">
+        <div class="modal-content">
+            <h2 style="margin-bottom: 16px;">Привязка TON кошелька</h2>
+            <input type="text" class="input-field" placeholder="Введите адрес кошелька">
+            <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 16px;">
+                Пример: EQAB...1234
+            </p>
+            <button class="btn">Подтвердить</button>
+            <button class="btn-outline" style="margin-top: 8px;">Отмена</button>
+        </div>
+    </div>
+    
+    <!-- Нижнее меню -->
+    <div class="nav-tabs">
+        <button class="tab-button active" data-tab="home-tab">
+            <i class="fas fa-home tab-icon"></i>
+            Главная
+        </button>
+        <button class="tab-button" data-tab="offers-tab">
+            <i class="fas fa-exchange-alt tab-icon"></i>
+            Предложения
+        </button>
+        <button class="tab-button" data-tab="history-tab">
+            <i class="fas fa-history tab-icon"></i>
+            История
+        </button>
+        <button class="tab-button" data-tab="profile-tab">
+            <i class="fas fa-user tab-icon"></i>
+            Кабинет
+        </button>
+    </div>
+    
+    <script>
+        // Инициализация Telegram WebApp
+        Telegram.WebApp.expand();
+        Telegram.WebApp.enableClosingConfirmation();
+        
+        // Переключение вкладок
+        const tabButtons = document.querySelectorAll('.tab-button');
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                // Убираем активный класс у всех кнопок и вкладок
+                tabButtons.forEach(btn => btn.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(content => {
+                    content.classList.remove('active');
+                });
+                
+                // Добавляем активный класс к выбранной кнопке и вкладке
+                button.classList.add('active');
+                const tabId = button.getAttribute('data-tab');
+                document.getElementById(tabId).classList.add('active');
+            });
+        });
+        
+        // Логика для модального окна кошелька
+        const walletModal = document.getElementById('wallet-modal');
+        const walletBtns = document.querySelectorAll('[data-action="open-wallet-modal"]');
+        const closeWalletModal = document.querySelector('[data-action="close-wallet-modal"]');
+        
+        walletBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                walletModal.style.display = 'flex';
+            });
+        });
+        
+        closeWalletModal?.addEventListener('click', () => {
+            walletModal.style.display = 'none';
+        });
+        
+        // Закрытие модального окна при клике вне его
+        walletModal.addEventListener('click', (e) => {
+            if (e.target === walletModal) {
+                walletModal.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>
